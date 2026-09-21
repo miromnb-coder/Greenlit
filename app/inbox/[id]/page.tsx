@@ -18,11 +18,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_300px]">
       <div>
-        <Link href="/inbox" className="text-sm text-[#8a8a80]">← Inbox</Link>
+        <Link href="/inbox" className="text-sm text-[#6b6b66]">← Inbox</Link>
         <div className="mt-4 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">{lead.name}</h1>
-            <p className="text-[#8a8a80]">
+            <p className="text-[#6b6b66]">
               {lead.email}
               {lead.company ? ` · ${lead.company}` : ""}
               {lead.title ? ` · ${lead.title}` : ""}
@@ -32,26 +32,26 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <Status value={lead.status} />
         </div>
 
-        <section className="mt-6 rounded-2xl border border-[#d4ff00]/30 p-4">
+        <section className="mt-6 rounded-2xl border border-[#e6e6e2] bg-[#f4f4f2] p-4">
           <p className="label">Why this stopped</p>
-          <p className="text-[#d4ff00]">{why.title}</p>
-          <p className="mt-1 text-[#b5b5ab]">{why.detail}</p>
-          <p className="mt-2 text-sm text-[#8a8a80]">{why.next}</p>
+          <p>{why.title}</p>
+          <p className="mt-1 text-[#6b6b66]">{why.detail}</p>
+          <p className="mt-2 text-sm text-[#6b6b66]">{why.next}</p>
         </section>
 
         {lead.message && (
-          <section className="mt-4 rounded-2xl border border-[#222] p-4">
+          <section className="mt-4 rounded-2xl border border-[#e6e6e2] p-4">
             <p className="label">Form note</p>
             <p className="whitespace-pre-wrap">{lead.message}</p>
           </section>
         )}
 
         {lead.thread?.length > 0 && (
-          <section className="mt-4 space-y-3 rounded-2xl border border-[#222] p-4">
+          <section className="mt-4 space-y-3 rounded-2xl border border-[#e6e6e2] p-4">
             <p className="label">Thread</p>
             {lead.thread.map((m) => (
               <div key={m.at + m.direction} className="text-sm">
-                <p className="text-[#8a8a80]">{m.direction === "in" ? "Them" : "Us"} · {new Date(m.at).toLocaleString()}</p>
+                <p className="text-[#6b6b66]">{m.direction === "in" ? "Them" : "Us"} · {new Date(m.at).toLocaleString()}</p>
                 <p className="whitespace-pre-wrap">{m.body}</p>
               </div>
             ))}
@@ -59,22 +59,22 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         )}
 
         {lead.research && (
-          <section className="mt-4 rounded-2xl border border-[#222] p-4">
+          <section className="mt-4 rounded-2xl border border-[#e6e6e2] p-4">
             <p className="label">Research</p>
             <p>
               {lead.research.companyGuess} · score {lead.research.score}
               {lead.research.disqualified ? " · disqualified" : ""}
             </p>
-            <p className="mt-2 text-[#b5b5ab]">{lead.research.likelyNeed}</p>
+            <p className="mt-2 text-[#6b6b66]">{lead.research.likelyNeed}</p>
           </section>
         )}
         <LeadActions lead={lead} />
       </div>
-      <aside className="space-y-3 text-sm text-[#8a8a80]">
+      <aside className="space-y-3 text-sm text-[#6b6b66]">
         <p className="label">Replay</p>
         {history.map((e) => (
-          <div key={e.at + e.type} className="border-b border-[#1c1c1c] pb-2">
-            <p className="text-[#d8d8ce]">{e.type} <span className="text-[#8a8a80]">· {e.actor}</span></p>
+          <div key={e.at + e.type} className="border-b border-[#e6e6e2] pb-2">
+            <p className="text-[#111]">{e.type} <span className="text-[#6b6b66]">· {e.actor}</span></p>
             <p>{e.detail}</p>
             <p className="text-xs">{new Date(e.at).toLocaleString()}</p>
           </div>
