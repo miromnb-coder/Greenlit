@@ -28,16 +28,23 @@ export const defaultPlaybook: Playbook = {
 };
 
 export const defaultConnections: Connections = { gmail: null, hubspotToken: "" };
-
 const empty: Store = { playbook: defaultPlaybook, leads: [], connections: defaultConnections, jobs: [] };
+
+function normalizeLead(lead: Lead): Lead {
+  return {
+    ...lead,
+    thread: lead.thread ?? [],
+    slots: lead.slots ?? [],
+    intent: lead.intent ?? null,
+    tokens: lead.tokens ?? 0,
+    costUsd: lead.costUsd ?? 0,
+  };
+}
 
 async function ensure() {
   await fs.mkdir(path.dirname(FILE), { recursive: true });
-  try {
-    await fs.access(FILE);
-  } catch {
-    await fs.writeFile(FILE, JSON.stringify(empty, null, 2));
-  }
+  try { await fs.access(FILE); }
+  catch { await fs.writeFile(FILE, JSON.stringify(empty, null, 2)); }
 }
 
 export async function readStore(): Promise<Store> {
@@ -47,7 +54,7 @@ export async function readStore(): Promise<Store> {
     const parsed = JSON.parse(raw) as Partial<Store>;
     return {
       playbook: { ...defaultPlaybook, ...parsed.playbook },
-      leads: parsed.leads ?? [],
+      leads: (parsed.leads ?? []).map(normalizeLead),
       connections: { ...defaultConnections, ...parsed.connections },
       jobs: parsed.jobs ?? [],
     };
