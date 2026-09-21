@@ -53,6 +53,9 @@ export async function createLead(input: {
     research: null,
     draft: null,
     events: [{ at: now(), type: "created", detail: `Source: ${input.source ?? "manual"}` }],
+    thread: [],
+    intent: null,
+    slots: [],
     tokens: 0,
     costUsd: 0,
   };
