@@ -23,16 +23,31 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               {lead.email}
               {lead.company ? ` · ${lead.company}` : ""}
               {lead.title ? ` · ${lead.title}` : ""}
+              {lead.intent ? ` · ${lead.intent}` : ""}
             </p>
           </div>
           <Status value={lead.status} />
         </div>
+
         {lead.message && (
           <section className="mt-6 rounded-2xl border border-[#222] p-4">
             <p className="label">Form note</p>
             <p className="whitespace-pre-wrap">{lead.message}</p>
           </section>
         )}
+
+        {lead.thread?.length > 0 && (
+          <section className="mt-4 space-y-3 rounded-2xl border border-[#222] p-4">
+            <p className="label">Thread</p>
+            {lead.thread.map((m) => (
+              <div key={m.at + m.direction} className="text-sm">
+                <p className="text-[#8a8a80]">{m.direction === "in" ? "Them" : "Us"} · {new Date(m.at).toLocaleString()}</p>
+                <p className="whitespace-pre-wrap">{m.body}</p>
+              </div>
+            ))}
+          </section>
+        )}
+
         {lead.research && (
           <section className="mt-4 rounded-2xl border border-[#222] p-4">
             <p className="label">Research</p>
@@ -41,11 +56,6 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               {lead.research.disqualified ? " · disqualified" : ""}
             </p>
             <p className="mt-2 text-[#b5b5ab]">{lead.research.likelyNeed}</p>
-            <ul className="mt-2 list-disc pl-5 text-sm text-[#8a8a80]">
-              {lead.research.reasons.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
           </section>
         )}
         <LeadActions lead={lead} />
