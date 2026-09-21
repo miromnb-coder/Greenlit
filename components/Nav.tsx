@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Lockup } from "./Mark";
 
 const LINKS = [
   ["/inbox", "Inbox"],
@@ -18,8 +17,8 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-20 border-b border-[#e6e6e2] bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3">
-        <Link href="/" onClick={() => setOpen(false)} aria-label="Greenlit home">
-          <Lockup />
+        <Link href="/" onClick={() => setOpen(false)} className="flex items-center" aria-label="Greenlit home">
+          <img src="/IMG_5126.PNG" alt="Greenlit" className="h-8 w-auto md:h-9" />
         </Link>
         <nav className="hidden items-center gap-5 text-sm text-[#444] md:flex">
           {LINKS.map(([href, label]) => (
