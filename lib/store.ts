@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import type { Lead, Playbook, Store } from "./types";
+import type { Connections, Lead, Playbook, Store } from "./types";
 
 const FILE = path.join(process.cwd(), "data", "store.json");
 
@@ -27,7 +27,9 @@ export const defaultPlaybook: Playbook = {
   companyUrl: "https://github.com/miromnb-coder/Greenlit",
 };
 
-const empty: Store = { playbook: defaultPlaybook, leads: [] };
+export const defaultConnections: Connections = { gmail: null, hubspotToken: "" };
+
+const empty: Store = { playbook: defaultPlaybook, leads: [], connections: defaultConnections, jobs: [] };
 
 async function ensure() {
   await fs.mkdir(path.dirname(FILE), { recursive: true });
@@ -42,8 +44,13 @@ export async function readStore(): Promise<Store> {
   await ensure();
   const raw = await fs.readFile(FILE, "utf8");
   try {
-    const parsed = JSON.parse(raw) as Store;
-    return { playbook: { ...defaultPlaybook, ...parsed.playbook }, leads: parsed.leads ?? [] };
+    const parsed = JSON.parse(raw) as Partial<Store>;
+    return {
+      playbook: { ...defaultPlaybook, ...parsed.playbook },
+      leads: parsed.leads ?? [],
+      connections: { ...defaultConnections, ...parsed.connections },
+      jobs: parsed.jobs ?? [],
+    };
   } catch {
     return empty;
   }
@@ -61,6 +68,6 @@ export async function mutateStore<T>(fn: (store: Store) => T | Promise<T>) {
   return result;
 }
 
-export function addEvent(lead: Lead, type: string, detail: string) {
-  lead.events.unshift({ at: new Date().toISOString(), type, detail });
+export function addEvent(lead: Lead, type: string, detail: string, extra?: { tokens?: number; costUsd?: number }) {
+  lead.events.unshift({ at: new Date().toISOString(), type, detail, ...extra });
 }
