@@ -16,7 +16,12 @@ export function googleAuthUrl() {
     response_type: "code",
     access_type: "offline",
     prompt: "consent",
-    scope: "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email",
+    scope: [
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/calendar.events",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ].join(" "),
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
@@ -59,7 +64,7 @@ export async function exchangeGoogleCode(code: string): Promise<GmailConnection>
   };
 }
 
-async function accessToken(): Promise<{ token: string; email: string }> {
+export async function googleAccess(): Promise<{ token: string; email: string }> {
   const current = (await readStore()).connections.gmail;
   if (!current) throw new Error("Gmail is not connected");
   if (Date.now() < current.expiry - 30_000) {
@@ -92,7 +97,7 @@ function rawMessage(from: string, to: string, subject: string, body: string) {
 }
 
 export async function sendGmail(input: { to: string; subject: string; body: string }) {
-  const { token, email } = await accessToken();
+  const { token, email } = await googleAccess();
   const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
     headers: {
@@ -104,4 +109,32 @@ export async function sendGmail(input: { to: string; subject: string; body: stri
   const data = (await res.json()) as { id?: string; error?: { message?: string } };
   if (!res.ok || !data.id) throw new Error(data.error?.message || "Gmail send failed");
   return { id: data.id, from: email };
+}
+
+function decodePart(part: { body?: { data?: string }; parts?: unknown[] }): string {
+  if (part.body?.data) {
+    return Buffer.from(part.body.data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+  }
+  return "";
+}
+
+export async function fetchRepliesFrom(email: string) {
+  const { token } = await googleAccess();
+  const q = encodeURIComponent(`from:${email} newer_than:14d`);
+  const list = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5&q=${q}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const data = (await list.json()) as { messages?: { id: string }[] };
+  if (!list.ok) throw new Error("Gmail list failed");
+  const out: { id: string; body: string }[] = [];
+  for (const row of data.messages ?? []) {
+    const msg = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${row.id}?format=full`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const full = (await msg.json()) as { id: string; snippet?: string; payload?: { body?: { data?: string }; parts?: { mimeType?: string; body?: { data?: string } }[] } };
+    const textPart = full.payload?.parts?.find((p) => p.mimeType === "text/plain") ?? full.payload;
+    const body = textPart ? decodePart(textPart) : full.snippet || "";
+    out.push({ id: full.id, body: body.trim() || full.snippet || "" });
+  }
+  return out;
 }
