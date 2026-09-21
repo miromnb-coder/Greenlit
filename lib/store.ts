@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import type { Connections, Lead, Playbook, Store } from "./types";
+import { readRemote, supabaseConfigured, writeRemote } from "./supabase";
 
 const FILE = process.env.VERCEL
   ? path.join("/tmp", "greenlit-store.json")
@@ -62,12 +63,20 @@ async function ensure() {
     try {
       await fs.writeFile(FILE, JSON.stringify(empty, null, 2));
     } catch {
-      // read-only host: keep memory store
+      /* ignore */
     }
   }
 }
 
 export async function readStore(): Promise<Store> {
+  if (supabaseConfigured()) {
+    try {
+      memory = hydrate(await readRemote());
+      return memory;
+    } catch {
+      return memory ?? empty;
+    }
+  }
   try {
     await ensure();
     const raw = await fs.readFile(FILE, "utf8");
@@ -80,11 +89,15 @@ export async function readStore(): Promise<Store> {
 
 export async function writeStore(store: Store) {
   memory = store;
+  if (supabaseConfigured()) {
+    await writeRemote(store);
+    return;
+  }
   try {
     await ensure();
     await fs.writeFile(FILE, JSON.stringify(store, null, 2));
   } catch {
-    // persist in memory for this instance
+    /* memory only */
   }
 }
 
