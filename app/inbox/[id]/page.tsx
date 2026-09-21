@@ -1,0 +1,65 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { readStore } from "@/lib/store";
+import { Status } from "@/components/Status";
+import { LeadActions } from "./ui";
+
+export const dynamic = "force-dynamic";
+
+export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { leads } = await readStore();
+  const lead = leads.find((l) => l.id === id);
+  if (!lead) notFound();
+
+  return (
+    <div className="grid gap-8 md:grid-cols-[1fr_280px]">
+      <div>
+        <Link href="/inbox" className="text-sm text-[#8a8a80]">← Inbox</Link>
+        <div className="mt-4 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">{lead.name}</h1>
+            <p className="text-[#8a8a80]">
+              {lead.email}
+              {lead.company ? ` · ${lead.company}` : ""}
+              {lead.title ? ` · ${lead.title}` : ""}
+            </p>
+          </div>
+          <Status value={lead.status} />
+        </div>
+        {lead.message && (
+          <section className="mt-6 rounded-2xl border border-[#222] p-4">
+            <p className="label">Form note</p>
+            <p className="whitespace-pre-wrap">{lead.message}</p>
+          </section>
+        )}
+        {lead.research && (
+          <section className="mt-4 rounded-2xl border border-[#222] p-4">
+            <p className="label">Research</p>
+            <p>
+              {lead.research.companyGuess} · score {lead.research.score}
+              {lead.research.disqualified ? " · disqualified" : ""}
+            </p>
+            <p className="mt-2 text-[#b5b5ab]">{lead.research.likelyNeed}</p>
+            <ul className="mt-2 list-disc pl-5 text-sm text-[#8a8a80]">
+              {lead.research.reasons.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+        <LeadActions lead={lead} />
+      </div>
+      <aside className="space-y-3 text-sm text-[#8a8a80]">
+        <p className="label">Audit</p>
+        {lead.events.map((e) => (
+          <div key={e.at + e.type} className="border-b border-[#1c1c1c] pb-2">
+            <p className="text-[#d8d8ce]">{e.type}</p>
+            <p>{e.detail}</p>
+            <p className="text-xs">{new Date(e.at).toLocaleString()}</p>
+          </div>
+        ))}
+      </aside>
+    </div>
+  );
+}
