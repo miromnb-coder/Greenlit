@@ -2,11 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { addEvent, mutateStore, readStore } from "./store";
-import { assertTransition } from "./state";
 import { classifyReply, draftAfterReply } from "./closer";
 import { fetchRepliesFrom } from "./gmail";
 import { bookGoogleEvent } from "./calendar";
-import type { Lead } from "./types";
 
 function refresh() {
   revalidatePath("/inbox");
@@ -23,16 +21,8 @@ export async function ingestReply(leadId: string, text: string, gmailId?: string
     if (gmailId && lead.thread.some((m) => m.gmailId === gmailId)) return;
     lead.thread.push({ at: new Date().toISOString(), direction: "in", body: incoming, gmailId });
     if (lead.status === "sent" || lead.status === "approved") {
-      assertTransition(lead.status === "approved" ? "sent" : lead.status, "replied");
-      if (lead.status === "sent") lead.status = "replied";
-    } else if (lead.status === "sent") {
-      lead.status = "replied";
-    } else if (["sent", "approved"].includes(lead.status)) {
-      lead.status = "replied";
-    } else if (lead.status === "sent") {
       lead.status = "replied";
     }
-    if (lead.status === "sent") lead.status = "replied";
     addEvent(lead, "replied", incoming.slice(0, 180));
     const intent = classifyReply(incoming);
     lead.intent = intent;
@@ -58,18 +48,15 @@ export async function simulateReply(leadId: string, text: string) {
 export async function pollGmailReplies() {
   const { leads, connections } = await readStore();
   if (!connections.gmail) throw new Error("Connect Gmail first");
-  let found = 0;
   for (const lead of leads.filter((l) => ["sent", "replied", "waiting_approval"].includes(l.status))) {
     const messages = await fetchRepliesFrom(lead.email);
     for (const msg of messages) {
       const known = (lead.thread ?? []).some((m) => m.gmailId === msg.id);
       if (known || !msg.body) continue;
       await ingestReply(lead.id, msg.body, msg.id);
-      found += 1;
     }
   }
   refresh();
-  return { found };
 }
 
 export async function bookSlot(leadId: string, startsAt: string) {
@@ -94,7 +81,7 @@ export async function bookSlot(leadId: string, startsAt: string) {
     const current = s.leads.find((l) => l.id === leadId);
     if (!current) return;
     current.slots = (current.slots ?? []).map((x) =>
-      x.startsAt === startsAt ? { ...x, status: "booked", hangoutLink: hangout || x.hangoutLink } : x,
+      x.startsAt === startsAt ? { ...x, status: "booked" as const, hangoutLink: hangout || x.hangoutLink } : x,
     );
     addEvent(current, "booked", hangout ? `Meeting booked ${slot.label} ${hangout}` : `Marked booked ${slot.label} (add Google Calendar scope)`);
   });
