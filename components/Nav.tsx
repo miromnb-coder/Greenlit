@@ -18,7 +18,7 @@ export function Nav() {
     <header className="sticky top-0 z-20 border-b border-[#e6e6e2] bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3">
         <Link href="/" onClick={() => setOpen(false)} className="flex min-w-0 items-center" aria-label="Greenlit home">
-          <img src="/IMG_5126.PNG" alt="Greenlit" className="h-12 w-auto max-w-[70vw] object-contain object-left md:h-14" />
+          <img src="/IMG_5126.png" alt="Greenlit" className="h-12 w-auto max-w-[70vw] object-contain object-left md:h-14" />
         </Link>
         <nav className="hidden items-center gap-5 text-sm text-[#444] md:flex">
           {LINKS.map(([href, label]) => (
