@@ -24,8 +24,8 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="lime text-xs uppercase tracking-[0.18em]">Queue</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Inbox</h1>
+          <p className="label">Queue</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Inbox</h1>
         </div>
         <div className="flex gap-2">
           <form action={pollGmailReplies}>
@@ -41,24 +41,28 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           <Link
             key={f.key}
             href={f.key === "all" ? "/inbox" : `/inbox?status=${f.key}`}
-            className={`rounded-full border px-3 py-1 ${status === f.key || (!status && f.key === "all") ? "border-[#d4ff00] text-[#d4ff00]" : "border-[#333] text-[#8a8a80]"}`}
+            className={`rounded-full border px-3 py-1 ${
+              status === f.key || (!status && f.key === "all")
+                ? "border-[#111] text-[#111]"
+                : "border-[#e6e6e2] text-[#6b6b66]"
+            }`}
           >
             {f.label}
           </Link>
         ))}
       </div>
       {visible.length === 0 ? (
-        <div className="rounded-2xl border border-[#222] p-8 text-[#8a8a80]">Nothing in this queue.</div>
+        <div className="rounded-2xl border border-[#e6e6e2] p-8 text-[#6b6b66]">Nothing in this queue.</div>
       ) : (
-        <ul className="divide-y divide-[#1c1c1c] rounded-2xl border border-[#1c1c1c]">
+        <ul className="divide-y divide-[#e6e6e2] rounded-2xl border border-[#e6e6e2]">
           {visible.map((lead) => (
             <li key={lead.id}>
-              <Link href={`/inbox/${lead.id}`} className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-[#0e0e0e]">
+              <Link href={`/inbox/${lead.id}`} className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-[#f4f4f2]">
                 <div className="min-w-0">
                   <p className="truncate font-medium">
-                    {lead.name} <span className="text-[#7a7a72]">{lead.company && `· ${lead.company}`}</span>
+                    {lead.name} <span className="text-[#6b6b66]">{lead.company && `· ${lead.company}`}</span>
                   </p>
-                  <p className="truncate text-sm text-[#8a8a80]">
+                  <p className="truncate text-sm text-[#6b6b66]">
                     {lead.email}{lead.intent ? ` · ${lead.intent}` : ""}
                   </p>
                 </div>

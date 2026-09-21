@@ -17,11 +17,10 @@ export default async function FlowPage() {
   return (
     <div className="space-y-10">
       <div>
-        <p className="lime text-xs uppercase tracking-[0.18em]">Weeks 7–8</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Flow</h1>
-        <p className="mt-2 text-[#8a8a80]">Why a lead stopped, and what already happened. No new channels.</p>
+        <p className="label">Pipeline</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Flow</h1>
+        <p className="mt-2 text-[#6b6b66]">Why a lead stopped, and what already happened.</p>
       </div>
-
       <div className="grid gap-3 sm:grid-cols-4">
         {[
           ["Open", String(open.length)],
@@ -29,67 +28,63 @@ export default async function FlowPage() {
           ["Won", String(won)],
           ["Model $", `$${cost.toFixed(4)}`],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-[#222] p-4">
+          <div key={label} className="rounded-2xl border border-[#e6e6e2] bg-[#f4f4f2] p-4">
             <p className="label">{label}</p>
             <p className="text-2xl">{value}</p>
           </div>
         ))}
       </div>
-
       <section>
-        <p className="label mb-3">Pipeline</p>
+        <p className="label mb-3">Stages</p>
         <div className="flex flex-wrap gap-2">
           {PIPELINE.map((step) => {
             const n = leads.filter((l) => l.status === step).length;
             return (
-              <Link key={step} href={`/inbox?status=${step}`} className="rounded-2xl border border-[#222] px-3 py-2 text-sm">
-                <span className="text-[#8a8a80]">{step.replaceAll("_", " ")}</span>
-                <span className="ml-2 text-[#d4ff00]">{n}</span>
+              <Link key={step} href={`/inbox?status=${step}`} className="rounded-2xl border border-[#e6e6e2] px-3 py-2 text-sm">
+                <span className="text-[#6b6b66]">{step.replaceAll("_", " ")}</span>
+                <span className="ml-2 text-[#111]">{n}</span>
               </Link>
             );
           })}
         </div>
       </section>
-
       <section>
         <p className="label mb-3">Stuck</p>
         {stuck.length === 0 ? (
-          <p className="text-[#8a8a80]">Nothing open. Import a lead.</p>
+          <p className="text-[#6b6b66]">Nothing open. Import a lead.</p>
         ) : (
-          <ul className="divide-y divide-[#1c1c1c] rounded-2xl border border-[#1c1c1c]">
+          <ul className="divide-y divide-[#e6e6e2] rounded-2xl border border-[#e6e6e2]">
             {stuck.map(({ lead, why }) => (
               <li key={lead.id}>
-                <Link href={`/inbox/${lead.id}`} className="block px-4 py-4 hover:bg-[#0e0e0e]">
+                <Link href={`/inbox/${lead.id}`} className="block px-4 py-4 hover:bg-[#f4f4f2]">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{lead.name} <span className="text-[#7a7a72]">{lead.company}</span></p>
+                    <p className="font-medium">{lead.name} <span className="text-[#6b6b66]">{lead.company}</span></p>
                     <Status value={lead.status} />
                   </div>
-                  <p className="mt-1 text-sm text-[#d4ff00]">{why.title}</p>
-                  <p className="text-sm text-[#8a8a80]">{why.detail} {why.next}</p>
+                  <p className="mt-1 text-sm">{why.title}</p>
+                  <p className="text-sm text-[#6b6b66]">{why.detail} {why.next}</p>
                 </Link>
               </li>
             ))}
           </ul>
         )}
       </section>
-
       <section>
         <p className="label mb-3">Companies</p>
         {firms.length === 0 ? (
-          <p className="text-[#8a8a80]">No firms yet.</p>
+          <p className="text-[#6b6b66]">No firms yet.</p>
         ) : (
           <ul className="grid gap-2 sm:grid-cols-2">
             {firms.map((firm) => (
-              <li key={firm.name} className="rounded-2xl border border-[#222] px-4 py-3">
+              <li key={firm.name} className="rounded-2xl border border-[#e6e6e2] px-4 py-3">
                 <p>{firm.name}</p>
-                <p className="text-sm text-[#8a8a80]">{firm.leads} lead{firm.leads === 1 ? "" : "s"} · {firm.statuses.join(", ")}</p>
+                <p className="text-sm text-[#6b6b66]">{firm.leads} lead{firm.leads === 1 ? "" : "s"} · {firm.statuses.join(", ")}</p>
               </li>
             ))}
           </ul>
         )}
       </section>
-
-      <p className="text-sm text-[#8a8a80]">{jobs.filter((j) => j.status === "failed").length} failed jobs on <Link href="/activity" className="text-[#d4ff00]">Activity</Link>.</p>
+      <p className="text-sm text-[#6b6b66]">{jobs.filter((j) => j.status === "failed").length} failed jobs on <Link href="/activity" className="underline">Activity</Link>.</p>
     </div>
   );
 }
