@@ -2,6 +2,7 @@
 
 :root {
   --bg: #070707;
+  --panel: #101010;
   --fg: #f4f4f0;
   --lime: #d4ff00;
   --muted: #8a8a80;
@@ -22,7 +23,7 @@ input, textarea, select, button { font: inherit; }
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  padding: 0.55rem 1rem;
+  padding: 0.6rem 1.05rem;
   font-size: 0.9rem;
   font-weight: 600;
   border: 1px solid transparent;
@@ -36,14 +37,14 @@ input, textarea, select, button { font: inherit; }
   background: #0c0c0c;
   border: 1px solid #2a2a2a;
   color: var(--fg);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0.65rem 0.8rem;
 }
 .field:focus { outline: 1px solid var(--lime); }
 .label {
   display: block;
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
   margin-bottom: 0.35rem;

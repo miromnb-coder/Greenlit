@@ -1,22 +1,45 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { Mark } from "./Mark";
+
+const LINKS = [
+  ["/inbox", "Inbox"],
+  ["/flow", "Flow"],
+  ["/playbook", "Playbook"],
+  ["/import", "Import"],
+  ["/connections", "Connect"],
+  ["/activity", "Activity"],
+] as const;
 
 export function Nav() {
+  const [open, setOpen] = useState(false);
   return (
-    <header className="border-b border-[#1c1c1c]">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#d4ff00]" />
+    <header className="sticky top-0 z-20 border-b border-[#1c1c1c] bg-[#070707]/90 backdrop-blur">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3">
+        <Link href="/" className="flex items-center gap-2 text-[15px] font-semibold tracking-tight" onClick={() => setOpen(false)}>
+          <Mark />
           Greenlit
         </Link>
-        <nav className="flex flex-wrap items-center gap-4 text-sm text-[#b5b5ab]">
-          <Link href="/inbox">Inbox</Link>
-          <Link href="/flow">Flow</Link>
-          <Link href="/playbook">Playbook</Link>
-          <Link href="/import">Import</Link>
-          <Link href="/connections">Connect</Link>
-          <Link href="/activity">Activity</Link>
+        <nav className="hidden items-center gap-5 text-sm text-[#b5b5ab] md:flex">
+          {LINKS.map(([href, label]) => (
+            <Link key={href} href={href} className="hover:text-[#d4ff00]">{label}</Link>
+          ))}
         </nav>
+        <button className="btn btn-ghost px-3 py-1 text-sm md:hidden" type="button" onClick={() => setOpen((v) => !v)}>
+          {open ? "Close" : "Menu"}
+        </button>
       </div>
+      {open && (
+        <nav className="grid gap-1 border-t border-[#1c1c1c] px-5 py-3 md:hidden">
+          {LINKS.map(([href, label]) => (
+            <Link key={href} href={href} className="rounded-xl px-2 py-2 text-[#d8d8ce]" onClick={() => setOpen(false)}>
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </header>
   );
 }
