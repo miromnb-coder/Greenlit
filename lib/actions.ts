@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { addEvent, defaultPlaybook, mutateStore } from "./store";
 import { assertTransition } from "./state";
 import { runResearchAndDraft } from "./research";
+import { enqueueSend } from "./jobs";
 import type { Lead, Playbook } from "./types";
 
 function id() {
@@ -19,6 +20,21 @@ export async function savePlaybook(form: FormData) {
     s.playbook = { ...defaultPlaybook, ...s.playbook, ...patch } as Playbook;
   });
   revalidatePath("/playbook");
+}
+
+export async function saveHubspotToken(form: FormData) {
+  const token = String(form.get("hubspotToken") ?? "").trim();
+  await mutateStore((s) => {
+    s.connections.hubspotToken = token;
+  });
+  revalidatePath("/connections");
+}
+
+export async function disconnectGmail() {
+  await mutateStore((s) => {
+    s.connections.gmail = null;
+  });
+  revalidatePath("/connections");
 }
 
 export async function createLead(input: {
@@ -37,6 +53,8 @@ export async function createLead(input: {
     research: null,
     draft: null,
     events: [{ at: now(), type: "created", detail: `Source: ${input.source ?? "manual"}` }],
+    tokens: 0,
+    costUsd: 0,
   };
   await mutateStore((s) => {
     s.leads.unshift(lead);
@@ -78,15 +96,23 @@ export async function prepareLead(leadId: string) {
       lead.status = "researching";
       addEvent(lead, "status", "researching");
     }
-    const { research, draft } = await runResearchAndDraft(lead, s.playbook);
+    const { research, draft, usage } = await runResearchAndDraft(lead, s.playbook);
     lead.research = research;
     lead.draft = draft;
+    lead.tokens = (lead.tokens ?? 0) + usage.tokens;
+    lead.costUsd = Number(((lead.costUsd ?? 0) + usage.costUsd).toFixed(6));
     assertTransition("researching", "waiting_approval");
     lead.status = "waiting_approval";
-    addEvent(lead, "draft", research.disqualified ? "Drafted a polite close" : `Score ${research.score}`);
+    addEvent(
+      lead,
+      "draft",
+      research.disqualified ? "Drafted a polite close" : `Score ${research.score} via ${usage.model}`,
+      { tokens: usage.tokens, costUsd: usage.costUsd },
+    );
   });
   revalidatePath("/inbox");
   revalidatePath(`/inbox/${leadId}`);
+  revalidatePath("/activity");
 }
 
 export async function saveDraft(leadId: string, subject: string, body: string) {
@@ -106,12 +132,15 @@ export async function approveLead(leadId: string) {
     assertTransition(lead.status, "approved");
     lead.status = "approved";
     addEvent(lead, "approved", "Human greenlit the send");
-    assertTransition("approved", "sent");
-    lead.status = "sent";
-    addEvent(lead, "sent", "Marked sent (Gmail OAuth is week 3-4)");
   });
+  try {
+    await enqueueSend(leadId);
+  } catch {
+    // job record already holds the error
+  }
   revalidatePath("/inbox");
   revalidatePath(`/inbox/${leadId}`);
+  revalidatePath("/activity");
 }
 
 export async function rejectLead(leadId: string, reason: string) {

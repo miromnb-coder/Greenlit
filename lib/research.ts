@@ -1,5 +1,7 @@
 import type { Lead, Playbook, Research, Draft } from "./types";
 
+export type Usage = { tokens: number; costUsd: number; model: string };
+
 function scoreLead(lead: Lead, playbook: Playbook): Research {
   const blob = `${lead.name} ${lead.email} ${lead.company} ${lead.title} ${lead.message}`.toLowerCase();
   const reasons: string[] = [];
@@ -43,9 +45,11 @@ function draftFromPlaybook(lead: Lead, playbook: Playbook, research: Research): 
   };
 }
 
-async function claudeJSON(prompt: string) {
+async function claudeJSON(prompt: string): Promise<{ json: Record<string, unknown> | null; usage: Usage }> {
+  const empty: Usage = { tokens: 0, costUsd: 0, model: "stub" };
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return null;
+  if (!key) return { json: null, usage: empty };
+  const model = "claude-sonnet-4-20250514";
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -53,30 +57,38 @@ async function claudeJSON(prompt: string) {
       "x-api-key": key,
       "anthropic-version": "2023-06-01",
     },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 800,
-      messages: [{ role: "user", content: prompt }],
-    }),
+    body: JSON.stringify({ model, max_tokens: 800, messages: [{ role: "user", content: prompt }] }),
   });
-  if (!res.ok) return null;
-  const data = (await res.json()) as { content?: { type: string; text?: string }[] };
+  if (!res.ok) return { json: null, usage: empty };
+  const data = (await res.json()) as {
+    content?: { type: string; text?: string }[];
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
+  const input = data.usage?.input_tokens ?? 0;
+  const output = data.usage?.output_tokens ?? 0;
+  const tokens = input + output;
+  const costUsd = (input / 1_000_000) * 3 + (output / 1_000_000) * 15;
   const text = data.content?.find((b) => b.type === "text")?.text ?? "";
   const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try { return JSON.parse(match[0]); } catch { return null; }
+  if (!match) return { json: null, usage: { tokens, costUsd, model } };
+  try {
+    return { json: JSON.parse(match[0]), usage: { tokens, costUsd, model } };
+  } catch {
+    return { json: null, usage: { tokens, costUsd, model } };
+  }
 }
 
 export async function runResearchAndDraft(lead: Lead, playbook: Playbook) {
   const fallbackResearch = scoreLead(lead, playbook);
   const fallbackDraft = draftFromPlaybook(lead, playbook, fallbackResearch);
-  const llm = await claudeJSON(`You prepare one inbound B2B lead. Return ONLY JSON:\n{"research":{"companyGuess":"","likelyNeed":"","score":0,"reasons":[""],"disqualified":false},"draft":{"subject":"","body":"","reason":""}}\n\nPlaybook:\n${JSON.stringify(playbook)}\n\nLead:\n${JSON.stringify({ name: lead.name, email: lead.email, company: lead.company, title: lead.title, message: lead.message })}\n\nRules: never invent prices outside playbook.priceRange. Never claim the email was sent. Language: ${playbook.language}. Tone: ${playbook.tone}.`);
+  const { json: llm, usage } = await claudeJSON(`You prepare one inbound B2B lead. Return ONLY JSON:\n{"research":{"companyGuess":"","likelyNeed":"","score":0,"reasons":[""],"disqualified":false},"draft":{"subject":"","body":"","reason":""}}\n\nPlaybook:\n${JSON.stringify(playbook)}\n\nLead:\n${JSON.stringify({ name: lead.name, email: lead.email, company: lead.company, title: lead.title, message: lead.message })}\n\nRules: never invent prices outside playbook.priceRange. Never claim the email was sent. Language: ${playbook.language}. Tone: ${playbook.tone}.`);
+  const parsed = (llm ?? {}) as { research?: Partial<Research>; draft?: Partial<Draft> };
   const research: Research = {
     ...fallbackResearch,
-    ...(llm?.research ?? {}),
-    reasons: llm?.research?.reasons?.length ? llm.research.reasons : fallbackResearch.reasons,
-    score: Number(llm?.research?.score ?? fallbackResearch.score),
+    ...(parsed.research ?? {}),
+    reasons: parsed.research?.reasons?.length ? parsed.research.reasons : fallbackResearch.reasons,
+    score: Number(parsed.research?.score ?? fallbackResearch.score),
   };
-  const draft: Draft = { ...fallbackDraft, ...(llm?.draft ?? {}) };
-  return { research, draft };
+  const draft: Draft = { ...fallbackDraft, ...(parsed.draft ?? {}) };
+  return { research, draft, usage };
 }
