@@ -2,7 +2,9 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { Connections, Lead, Playbook, Store } from "./types";
 
-const FILE = path.join(process.cwd(), "data", "store.json");
+const FILE = process.env.VERCEL
+  ? path.join("/tmp", "greenlit-store.json")
+  : path.join(process.cwd(), "data", "store.json");
 
 export const defaultPlaybook: Playbook = {
   companyName: "Greenlit",
@@ -30,6 +32,8 @@ export const defaultPlaybook: Playbook = {
 export const defaultConnections: Connections = { gmail: null, hubspotToken: "" };
 const empty: Store = { playbook: defaultPlaybook, leads: [], connections: defaultConnections, jobs: [] };
 
+let memory: Store = empty;
+
 function normalizeLead(lead: Lead): Lead {
   return {
     ...lead,
@@ -41,31 +45,47 @@ function normalizeLead(lead: Lead): Lead {
   };
 }
 
+function hydrate(parsed: Partial<Store>): Store {
+  return {
+    playbook: { ...defaultPlaybook, ...parsed.playbook },
+    leads: (parsed.leads ?? []).map(normalizeLead),
+    connections: { ...defaultConnections, ...parsed.connections },
+    jobs: parsed.jobs ?? [],
+  };
+}
+
 async function ensure() {
-  await fs.mkdir(path.dirname(FILE), { recursive: true });
-  try { await fs.access(FILE); }
-  catch { await fs.writeFile(FILE, JSON.stringify(empty, null, 2)); }
+  try {
+    await fs.mkdir(path.dirname(FILE), { recursive: true });
+    await fs.access(FILE);
+  } catch {
+    try {
+      await fs.writeFile(FILE, JSON.stringify(empty, null, 2));
+    } catch {
+      // read-only host: keep memory store
+    }
+  }
 }
 
 export async function readStore(): Promise<Store> {
-  await ensure();
-  const raw = await fs.readFile(FILE, "utf8");
   try {
-    const parsed = JSON.parse(raw) as Partial<Store>;
-    return {
-      playbook: { ...defaultPlaybook, ...parsed.playbook },
-      leads: (parsed.leads ?? []).map(normalizeLead),
-      connections: { ...defaultConnections, ...parsed.connections },
-      jobs: parsed.jobs ?? [],
-    };
+    await ensure();
+    const raw = await fs.readFile(FILE, "utf8");
+    memory = hydrate(JSON.parse(raw) as Partial<Store>);
+    return memory;
   } catch {
-    return empty;
+    return memory ?? empty;
   }
 }
 
 export async function writeStore(store: Store) {
-  await ensure();
-  await fs.writeFile(FILE, JSON.stringify(store, null, 2));
+  memory = store;
+  try {
+    await ensure();
+    await fs.writeFile(FILE, JSON.stringify(store, null, 2));
+  } catch {
+    // persist in memory for this instance
+  }
 }
 
 export async function mutateStore<T>(fn: (store: Store) => T | Promise<T>) {
