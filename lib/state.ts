@@ -9,7 +9,7 @@ const ALLOWED: Record<LeadStatus, LeadStatus[]> = {
   approved: ["sent"],
   sent: ["replied", "lost", "needs_human"],
   replied: ["won", "lost", "needs_human", "waiting_approval"],
-  needs_human: ["researching", "drafted", "waiting_approval", "rejected", "lost"],
+  needs_human: ["researching", "drafted", "waiting_approval", "approved", "rejected", "lost", "won"],
   rejected: [],
   won: [],
   lost: [],

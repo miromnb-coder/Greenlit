@@ -2,38 +2,30 @@
 
 Nothing reaches a customer until you greenlight it.
 
-Week 1: playbook, inbox, ingest, research + draft, approval.
-Week 3-4: Gmail send after approve, HubSpot note, job log, model cost.
-
 ```bash
 npm install
 cp .env.example .env.local
 npm run dev
 ```
 
-http://localhost:3000
-
 | Path | Purpose |
 | --- | --- |
-| `/playbook` | What the model may say |
-| `/inbox` | Queue |
+| `/playbook` | Rules the model may use |
+| `/inbox` | Queue + filters |
 | `/import` | Manual / CSV |
-| `/connections` | Gmail OAuth + HubSpot token |
+| `/connections` | Gmail + HubSpot |
 | `/activity` | Jobs and token cost |
-| `POST /api/leads` | Webhook (`x-greenlit-secret`) |
+| `POST /api/leads` | New lead webhook |
+| `POST /api/replies` | Inbound reply webhook |
 
-## Gmail
+## Loop
 
-Create an OAuth client in Google Cloud. Scope `gmail.send`. Redirect:
+1. Lead in → research + draft
+2. Human greenlights → Gmail send + HubSpot note
+3. Reply in (Gmail poll, webhook, or simulate) → classify
+4. Follow-up draft or meeting slots → greenlight again
+5. Book writes a Calendar event when Google is connected
 
-`http://localhost:3000/api/google/callback`
+Anger, legal tone, or playbook flags go to **Needs human**.
 
-Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`.
-
-Without Gmail, approve still records a local send so the queue can be tested.
-
-## HubSpot
-
-Paste a private app token on `/connections`. On approve, Greenlit upserts the contact and writes a note.
-
-`ANTHROPIC_API_KEY` is optional. Cost is $0 when the stub writer runs.
+Reconnect Gmail after pulling this commit so `gmail.readonly` and `calendar.events` are granted.
