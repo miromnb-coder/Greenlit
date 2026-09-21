@@ -45,10 +45,44 @@ function draftFromPlaybook(lead: Lead, playbook: Playbook, research: Research): 
   };
 }
 
-async function claudeJSON(prompt: string): Promise<{ json: Record<string, unknown> | null; usage: Usage }> {
-  const empty: Usage = { tokens: 0, costUsd: 0, model: "stub" };
+function parseJsonBlock(text: string) {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try { return JSON.parse(match[0]) as Record<string, unknown>; } catch { return null; }
+}
+
+async function openaiJSON(prompt: string): Promise<{ json: Record<string, unknown> | null; usage: Usage } | null> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return null;
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.3,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!res.ok) return { json: null, usage: { tokens: 0, costUsd: 0, model: "openai-error" } };
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  const input = data.usage?.prompt_tokens ?? 0;
+  const output = data.usage?.completion_tokens ?? 0;
+  const tokens = input + output;
+  const costUsd = (input / 1_000_000) * 0.15 + (output / 1_000_000) * 0.6;
+  const text = data.choices?.[0]?.message?.content ?? "";
+  return { json: parseJsonBlock(text), usage: { tokens, costUsd, model } };
+}
+
+async function claudeJSON(prompt: string): Promise<{ json: Record<string, unknown> | null; usage: Usage } | null> {
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return { json: null, usage: empty };
+  if (!key) return null;
   const model = "claude-sonnet-4-20250514";
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -59,7 +93,7 @@ async function claudeJSON(prompt: string): Promise<{ json: Record<string, unknow
     },
     body: JSON.stringify({ model, max_tokens: 800, messages: [{ role: "user", content: prompt }] }),
   });
-  if (!res.ok) return { json: null, usage: empty };
+  if (!res.ok) return { json: null, usage: { tokens: 0, costUsd: 0, model: "claude-error" } };
   const data = (await res.json()) as {
     content?: { type: string; text?: string }[];
     usage?: { input_tokens?: number; output_tokens?: number };
@@ -69,19 +103,21 @@ async function claudeJSON(prompt: string): Promise<{ json: Record<string, unknow
   const tokens = input + output;
   const costUsd = (input / 1_000_000) * 3 + (output / 1_000_000) * 15;
   const text = data.content?.find((b) => b.type === "text")?.text ?? "";
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return { json: null, usage: { tokens, costUsd, model } };
-  try {
-    return { json: JSON.parse(match[0]), usage: { tokens, costUsd, model } };
-  } catch {
-    return { json: null, usage: { tokens, costUsd, model } };
-  }
+  return { json: parseJsonBlock(text), usage: { tokens, costUsd, model } };
+}
+
+async function llmJSON(prompt: string) {
+  const openai = await openaiJSON(prompt);
+  if (openai) return openai;
+  const claude = await claudeJSON(prompt);
+  if (claude) return claude;
+  return { json: null, usage: { tokens: 0, costUsd: 0, model: "stub" } };
 }
 
 export async function runResearchAndDraft(lead: Lead, playbook: Playbook) {
   const fallbackResearch = scoreLead(lead, playbook);
   const fallbackDraft = draftFromPlaybook(lead, playbook, fallbackResearch);
-  const { json: llm, usage } = await claudeJSON(`You prepare one inbound B2B lead. Return ONLY JSON:\n{"research":{"companyGuess":"","likelyNeed":"","score":0,"reasons":[""],"disqualified":false},"draft":{"subject":"","body":"","reason":""}}\n\nPlaybook:\n${JSON.stringify(playbook)}\n\nLead:\n${JSON.stringify({ name: lead.name, email: lead.email, company: lead.company, title: lead.title, message: lead.message })}\n\nRules: never invent prices outside playbook.priceRange. Never claim the email was sent. Language: ${playbook.language}. Tone: ${playbook.tone}.`);
+  const { json: llm, usage } = await llmJSON(`You prepare one inbound B2B lead. Return ONLY JSON:\n{"research":{"companyGuess":"","likelyNeed":"","score":0,"reasons":[""],"disqualified":false},"draft":{"subject":"","body":"","reason":""}}\n\nPlaybook:\n${JSON.stringify(playbook)}\n\nLead:\n${JSON.stringify({ name: lead.name, email: lead.email, company: lead.company, title: lead.title, message: lead.message })}\n\nRules: never invent prices outside playbook.priceRange. Never claim the email was sent. Language: ${playbook.language}. Tone: ${playbook.tone}.`);
   const parsed = (llm ?? {}) as { research?: Partial<Research>; draft?: Partial<Draft> };
   const research: Research = {
     ...fallbackResearch,
