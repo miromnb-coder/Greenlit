@@ -1,6 +1,6 @@
 import type { LeadStatus } from "./types";
 
-const ALLOWED: Record<LeadStatus, LeadStatus[]> = {
+export const ALLOWED: Record<LeadStatus, LeadStatus[]> = {
   new: ["researching", "needs_human", "rejected"],
   researching: ["researched", "waiting_approval", "needs_human"],
   researched: ["drafted", "needs_human", "rejected"],
