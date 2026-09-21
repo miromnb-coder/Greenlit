@@ -12,6 +12,8 @@ export function Nav() {
           <Link href="/inbox">Inbox</Link>
           <Link href="/playbook">Playbook</Link>
           <Link href="/import">Import</Link>
+          <Link href="/connections">Connections</Link>
+          <Link href="/activity">Activity</Link>
         </nav>
       </div>
     </header>
