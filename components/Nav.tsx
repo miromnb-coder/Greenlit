@@ -16,16 +16,16 @@ export function Nav() {
   const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-20 border-b border-[#e6e6e2] bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3">
-        <Link href="/" onClick={() => setOpen(false)} className="flex items-center" aria-label="Greenlit home">
-          <img src="/IMG_5126.PNG" alt="Greenlit" className="h-8 w-auto md:h-9" />
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3">
+        <Link href="/" onClick={() => setOpen(false)} className="flex min-w-0 items-center" aria-label="Greenlit home">
+          <img src="/IMG_5126.PNG" alt="Greenlit" className="h-12 w-auto max-w-[70vw] object-contain object-left md:h-14" />
         </Link>
         <nav className="hidden items-center gap-5 text-sm text-[#444] md:flex">
           {LINKS.map(([href, label]) => (
             <Link key={href} href={href} className="hover:text-black">{label}</Link>
           ))}
         </nav>
-        <button className="btn btn-ghost px-3 py-1 text-sm md:hidden" type="button" onClick={() => setOpen((v) => !v)}>
+        <button className="btn btn-ghost shrink-0 px-3 py-1 text-sm md:hidden" type="button" onClick={() => setOpen((v) => !v)}>
           {open ? "Close" : "Menu"}
         </button>
       </div>
