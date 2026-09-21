@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { readStore } from "@/lib/store";
+import { replay, whyStuck } from "@/lib/flow";
 import { Status } from "@/components/Status";
 import { LeadActions } from "./ui";
 
@@ -11,9 +12,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const { leads } = await readStore();
   const lead = leads.find((l) => l.id === id);
   if (!lead) notFound();
+  const why = whyStuck(lead);
+  const history = replay(lead);
 
   return (
-    <div className="grid gap-8 md:grid-cols-[1fr_280px]">
+    <div className="grid gap-8 md:grid-cols-[1fr_300px]">
       <div>
         <Link href="/inbox" className="text-sm text-[#8a8a80]">← Inbox</Link>
         <div className="mt-4 flex items-start justify-between gap-4">
@@ -29,8 +32,15 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <Status value={lead.status} />
         </div>
 
+        <section className="mt-6 rounded-2xl border border-[#d4ff00]/30 p-4">
+          <p className="label">Why this stopped</p>
+          <p className="text-[#d4ff00]">{why.title}</p>
+          <p className="mt-1 text-[#b5b5ab]">{why.detail}</p>
+          <p className="mt-2 text-sm text-[#8a8a80]">{why.next}</p>
+        </section>
+
         {lead.message && (
-          <section className="mt-6 rounded-2xl border border-[#222] p-4">
+          <section className="mt-4 rounded-2xl border border-[#222] p-4">
             <p className="label">Form note</p>
             <p className="whitespace-pre-wrap">{lead.message}</p>
           </section>
@@ -61,10 +71,10 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
         <LeadActions lead={lead} />
       </div>
       <aside className="space-y-3 text-sm text-[#8a8a80]">
-        <p className="label">Audit</p>
-        {lead.events.map((e) => (
+        <p className="label">Replay</p>
+        {history.map((e) => (
           <div key={e.at + e.type} className="border-b border-[#1c1c1c] pb-2">
-            <p className="text-[#d8d8ce]">{e.type}</p>
+            <p className="text-[#d8d8ce]">{e.type} <span className="text-[#8a8a80]">· {e.actor}</span></p>
             <p>{e.detail}</p>
             <p className="text-xs">{new Date(e.at).toLocaleString()}</p>
           </div>

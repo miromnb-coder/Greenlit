@@ -8,11 +8,12 @@ export function Nav() {
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#d4ff00]" />
           Greenlit
         </Link>
-        <nav className="flex items-center gap-5 text-sm text-[#b5b5ab]">
+        <nav className="flex flex-wrap items-center gap-4 text-sm text-[#b5b5ab]">
           <Link href="/inbox">Inbox</Link>
+          <Link href="/flow">Flow</Link>
           <Link href="/playbook">Playbook</Link>
           <Link href="/import">Import</Link>
-          <Link href="/connections">Connections</Link>
+          <Link href="/connections">Connect</Link>
           <Link href="/activity">Activity</Link>
         </nav>
       </div>
