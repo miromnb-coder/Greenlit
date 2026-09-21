@@ -16,8 +16,8 @@ export default function Home() {
         Research, first email, your approval, then send. The model writes. The code owns state. You press the button.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/inbox" className="btn btn-primary">Open inbox</Link>
-        <Link href="/flow" className="btn btn-ghost">See flow</Link>
+        <Link href="/signup" className="btn btn-primary">Create an account</Link>
+        <Link href="/inbox" className="btn btn-ghost">Open inbox</Link>
       </div>
       <ol className="mt-14 grid gap-3 md:grid-cols-3">
         {STEPS.map(([n, title, copy]) => (
