@@ -1,20 +1,32 @@
-export function Mark({ size = 22 }: { size?: number }) {
+export function Mark({ size = 28 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="#111" aria-hidden>
+      <circle cx="18" cy="16" r="8" />
+      <circle cx="48" cy="50" r="7.2" />
+      <path d="M26 14.5c12.5 0 23 9.2 23 22.2 0 8.2-5.2 14.8-13.6 18.2" />
       <path
-        d="M16 5.5c-5.8 0-10.5 4.7-10.5 10.5S10.2 26.5 16 26.5"
-        stroke="#D4FF00"
-        strokeWidth="2.6"
+        d="M22 22c11 1.5 19 9.4 19 18.8 0 6.4-4 12-11.5 15.2"
+        fill="none"
+        stroke="#111"
+        strokeWidth="7.2"
         strokeLinecap="round"
       />
       <path
-        d="M16 26.5c5.8 0 10.5-4.7 10.5-10.5S21.8 5.5 16 5.5"
-        stroke="#D4FF00"
-        strokeWidth="2.6"
+        d="M38.5 18.5C28 16 18 22.5 16.5 34.5c-1.2 9.5 5.2 17.8 15 20.6"
+        fill="none"
+        stroke="#111"
+        strokeWidth="7.2"
         strokeLinecap="round"
-        opacity="0.55"
       />
-      <circle cx="16" cy="16" r="3.1" fill="#D4FF00" />
     </svg>
+  );
+}
+
+export function Lockup() {
+  return (
+    <span className="flex items-center gap-2.5">
+      <Mark />
+      <span className="text-[1.15rem] font-semibold tracking-tight">Greenlit</span>
+    </span>
   );
 }
