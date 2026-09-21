@@ -1,4 +1,4 @@
-import { mutateStore } from "./store";
+import { mutateStore, readStore } from "./store";
 import type { GmailConnection } from "./types";
 
 function appUrl() {
@@ -60,14 +60,14 @@ export async function exchangeGoogleCode(code: string): Promise<GmailConnection>
 }
 
 async function accessToken(): Promise<{ token: string; email: string }> {
-  const store = await mutateStore(async (s) => s.connections.gmail);
-  if (!store) throw new Error("Gmail is not connected");
-  if (Date.now() < store.expiry - 30_000) {
-    return { token: store.accessToken, email: store.email };
+  const current = (await readStore()).connections.gmail;
+  if (!current) throw new Error("Gmail is not connected");
+  if (Date.now() < current.expiry - 30_000) {
+    return { token: current.accessToken, email: current.email };
   }
-  if (!store.refreshToken) throw new Error("Gmail needs reconnecting");
+  if (!current.refreshToken) throw new Error("Gmail needs reconnecting");
   const data = await tokenRequest({
-    refresh_token: store.refreshToken,
+    refresh_token: current.refreshToken,
     grant_type: "refresh_token",
   });
   await mutateStore((s) => {
@@ -75,7 +75,7 @@ async function accessToken(): Promise<{ token: string; email: string }> {
     s.connections.gmail.accessToken = data.access_token!;
     s.connections.gmail.expiry = Date.now() + (data.expires_in ?? 3600) * 1000;
   });
-  return { token: data.access_token!, email: store.email };
+  return { token: data.access_token!, email: current.email };
 }
 
 function rawMessage(from: string, to: string, subject: string, body: string) {
