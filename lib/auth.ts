@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { supabaseAdmin } from "./supabase";
+import { adminRest } from "./supabase-admin";
 
 export type AuthContext = { userId: string; organizationId: string };
 
@@ -19,35 +19,20 @@ export async function getAuthContext(): Promise<AuthContext> {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new Error("Authentication required");
   const userId = data.user.id;
-
-  const admin = supabaseAdmin();
-  const existing = await admin.rest<{ organization_id: string }[]>(
+  const existing = await adminRest<{ organization_id: string }[]>(
     `organization_members?user_id=eq.${encodeURIComponent(userId)}&select=organization_id&limit=1`,
   );
   if (existing[0]?.organization_id) return { userId, organizationId: existing[0].organization_id };
 
-  const org = await admin.rest<{ id: string }[]>("organizations", {
-    method: "POST",
-    body: JSON.stringify({ name: `${data.user.email || "User"}'s Greenlit workspace` }),
+  const org = await adminRest<{ id: string }[]>("organizations", {
+    method: "POST", body: JSON.stringify({ name: `${data.user.email || "User"}'s Greenlit workspace` }),
     headers: { prefer: "return=representation" },
   });
   const organizationId = org[0]?.id;
   if (!organizationId) throw new Error("Could not create workspace");
-  await admin.rest("organization_members", {
-    method: "POST",
-    body: JSON.stringify({ organization_id: organizationId, user_id: userId, role: "owner" }),
-    headers: { prefer: "return=minimal" },
-  });
-  await admin.rest("org_playbooks", {
-    method: "POST",
-    body: JSON.stringify({ organization_id: organizationId, data: {} }),
-    headers: { prefer: "return=minimal" },
-  });
-  await admin.rest("org_connections", {
-    method: "POST",
-    body: JSON.stringify({ organization_id: organizationId, gmail: null, hubspot_token: "" }),
-    headers: { prefer: "return=minimal" },
-  });
+  await adminRest("organization_members", { method: "POST", body: JSON.stringify({ organization_id: organizationId, user_id: userId, role: "owner" }), headers: { prefer: "return=minimal" } });
+  await adminRest("org_playbooks", { method: "POST", body: JSON.stringify({ organization_id: organizationId, data: {} }), headers: { prefer: "return=minimal" } });
+  await adminRest("org_connections", { method: "POST", body: JSON.stringify({ organization_id: organizationId, gmail: null, hubspot_token: "" }), headers: { prefer: "return=minimal" } });
   return { userId, organizationId };
 }
 
