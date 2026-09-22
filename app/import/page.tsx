@@ -1,4 +1,5 @@
-import { createLead, importCsv } from "@/lib/actions";
+import { createLead } from "@/lib/actions";
+import { CsvImportForm } from "@/components/CsvImportForm";
 import { redirect } from "next/navigation";
 
 async function addOne(form: FormData) {
@@ -11,12 +12,6 @@ async function addOne(form: FormData) {
     message: String(form.get("message") ?? ""),
     source: "manual",
   });
-  redirect("/inbox");
-}
-
-async function addCsv(form: FormData) {
-  "use server";
-  await importCsv(String(form.get("csv") ?? ""));
   redirect("/inbox");
 }
 
@@ -38,11 +33,8 @@ export default function ImportPage() {
       <section>
         <p className="lime text-xs uppercase tracking-[0.18em]">CSV</p>
         <h2 className="mt-1 mb-6 text-3xl font-semibold tracking-tight">Import</h2>
-        <p className="mb-3 text-sm text-[#8a8a80]">Header row required. Columns: name, email, company, title, message.</p>
-        <form action={addCsv} className="space-y-3">
-          <textarea className="field min-h-48 font-mono text-sm" name="csv" placeholder={"name,email,company,title,message\nAda,ada@firma.fi,Firma,CEO,Need help with inbound"} />
-          <button className="btn btn-ghost" type="submit">Import CSV</button>
-        </form>
+        <p className="mb-3 text-sm text-[#8a8a80]">Header row required. Columns: name, email, company, title (or role), and message (or note). Quoted commas and newlines are supported.</p>
+        <CsvImportForm />
         <p className="mt-6 text-sm text-[#8a8a80]">
           Webhook: <code className="text-[#d4ff00]">POST /api/leads</code> with header <code>x-greenlit-secret</code>
         </p>

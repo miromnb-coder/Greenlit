@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { addEvent, defaultPlaybook, mutateStore } from "./store";
+import { addEvent, defaultPlaybook, mutateStore, readStore } from "./store";
 import { assertTransition } from "./state";
 import { runResearchAndDraft } from "./research";
 import { enqueueSend } from "./jobs";
+import { validateCsvLeads } from "./csv";
+import { leadInput } from "./validation";
 import type { Lead, Playbook } from "./types";
 
 function id() {
@@ -40,15 +42,16 @@ export async function disconnectGmail() {
 export async function createLead(input: {
   name: string; email: string; company?: string; title?: string; message?: string; source?: Lead["source"];
 }) {
+  const validated = leadInput(input);
   const lead: Lead = {
     id: id(),
     createdAt: now(),
     source: input.source ?? "manual",
-    name: input.name.trim(),
-    email: input.email.trim().toLowerCase(),
-    company: (input.company ?? "").trim(),
-    title: (input.title ?? "").trim(),
-    message: (input.message ?? "").trim(),
+    name: validated.name,
+    email: validated.email,
+    company: validated.company,
+    title: validated.title,
+    message: validated.message,
     status: "new",
     research: null,
     draft: null,
@@ -67,27 +70,17 @@ export async function createLead(input: {
 }
 
 export async function importCsv(text: string) {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim());
-  if (lines.length < 2) return { imported: 0 };
-  const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
-  const idx = (name: string) => header.findIndex((h) => h === name || h.includes(name));
+  const existingEmails = (await readStore()).leads.map((lead) => lead.email);
+  const { leads, errors } = validateCsvLeads(text, existingEmails);
   let imported = 0;
-  for (const line of lines.slice(1)) {
-    const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-    const email = cols[idx("email")] ?? "";
-    const name = cols[idx("name")] ?? email.split("@")[0] ?? "Unknown";
-    if (!email.includes("@")) continue;
+  for (const lead of leads) {
     await createLead({
-      name,
-      email,
-      company: cols[idx("company")] ?? "",
-      title: cols[idx("title")] ?? cols[idx("role")] ?? "",
-      message: cols[idx("message")] ?? cols[idx("note")] ?? "",
+      ...lead,
       source: "csv",
     });
     imported += 1;
   }
-  return { imported };
+  return { imported, errors };
 }
 
 export async function prepareLead(leadId: string) {

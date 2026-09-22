@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": ".test-build",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "incremental": false,
+    "jsx": "react-jsx"
+  },
+  "include": ["lib/csv.ts", "lib/validation.ts", "tests/**/*.ts"]
+}
