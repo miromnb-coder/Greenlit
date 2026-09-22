@@ -2,116 +2,19 @@ import type { Connections, Job, Lead, Playbook, Store } from "./types";
 import { getAuthContext } from "./auth";
 import { decryptJson, encryptJson } from "./secrets";
 
-export function supabaseConfigured() {
-  return Boolean(
-    (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
-      (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY),
-  );
-}
+export function supabaseConfigured() { return Boolean((process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) && process.env.SUPABASE_SERVICE_ROLE_KEY); }
+function config() { const url = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, ""); const key = process.env.SUPABASE_SERVICE_ROLE_KEY || ""; if (!url || !key) throw new Error("Supabase server configuration is missing"); return { url, key }; }
+async function rest<T>(path: string, init: RequestInit = {}): Promise<T> { const { url, key } = config(); const res = await fetch(`${url}/rest/v1/${path}`, { ...init, headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json", prefer: "return=representation", ...(init.headers ?? {}) }, cache: "no-store" }); if (!res.ok) { const text = await res.text(); throw new Error(`Supabase ${res.status}: ${text.slice(0,300)}`); } if (res.status === 204) return [] as T; return (await res.json()) as T; }
+export function supabaseAdmin() { return { rest }; }
 
-function config() {
-  const url = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "";
-  if (!url || !key) throw new Error("Supabase environment is not configured");
-  return { url, key };
-}
+type LeadRow = { id: string; created_at: string; source: Lead["source"]; name: string; email: string; company: string; title: string; message: string; status: Lead["status"]; research: Lead["research"]; draft: Lead["draft"]; events: Lead["events"]; thread: Lead["thread"]; intent: Lead["intent"]; slots: Lead["slots"]; tokens: number; cost_usd: number; gmail_id: string | null; gmail_thread_id: string | null; hubspot_contact_id: string | null };
+type JobRow = { id: string; type: Job["type"]; lead_id: string; status: Job["status"]; detail: string; created_at: string; finished_at?: string | null; idempotency_key?: string | null };
+function toLead(row: LeadRow): Lead { return { id: row.id, createdAt: row.created_at, source: row.source, name: row.name, email: row.email, company: row.company ?? "", title: row.title ?? "", message: row.message ?? "", status: row.status, research: row.research, draft: row.draft, events: row.events ?? [], thread: row.thread ?? [], intent: row.intent ?? null, slots: row.slots ?? [], tokens: Number(row.tokens ?? 0), costUsd: Number(row.cost_usd ?? 0), gmailId: row.gmail_id ?? undefined, gmailThreadId: row.gmail_thread_id ?? undefined, hubspotContactId: row.hubspot_contact_id ?? undefined }; }
+function fromLead(lead: Lead, organizationId: string) { return { id: lead.id, organization_id: organizationId, created_at: lead.createdAt, source: lead.source, name: lead.name, email: lead.email, company: lead.company, title: lead.title, message: lead.message, status: lead.status, research: lead.research, draft: lead.draft, events: lead.events ?? [], thread: lead.thread ?? [], intent: lead.intent, slots: lead.slots ?? [], tokens: lead.tokens ?? 0, cost_usd: lead.costUsd ?? 0, gmail_id: lead.gmailId ?? null, gmail_thread_id: lead.gmailThreadId ?? null, hubspot_contact_id: lead.hubspotContactId ?? null }; }
+function toJob(row: JobRow): Job { return { id: row.id, type: row.type, leadId: row.lead_id, status: row.status, detail: row.detail, createdAt: row.created_at, finishedAt: row.finished_at ?? undefined, idempotencyKey: row.idempotency_key ?? undefined }; }
+function fromJob(job: Job, organizationId: string) { return { id: job.id, organization_id: organizationId, type: job.type, lead_id: job.leadId, status: job.status, detail: job.detail, idempotency_key: job.idempotencyKey ?? null, created_at: job.createdAt, finished_at: job.finishedAt ?? null }; }
 
-async function rest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const { url, key } = config();
-  const res = await fetch(`${url}/rest/v1/${path}`, {
-    ...init,
-    headers: {
-      apikey: key,
-      authorization: `Bearer ${key}`,
-      "content-type": "application/json",
-      prefer: "return=representation",
-      ...(init.headers ?? {}),
-    },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Supabase ${res.status}: ${text.slice(0, 300)}`);
-  }
-  if (res.status === 204) return [] as T;
-  return (await res.json()) as T;
-}
+export async function readRemote(): Promise<Partial<Store>> { const { organizationId } = await getAuthContext(); const [books, conns, leads, jobs] = await Promise.all([rest<{data: Playbook}[]>(`org_playbooks?organization_id=eq.${organizationId}`), rest<{gmail: unknown;hubspot_token:string}[]>(`org_connections?organization_id=eq.${organizationId}`), rest<LeadRow[]>(`leads?organization_id=eq.${organizationId}&order=created_at.desc`), rest<JobRow[]>(`jobs?organization_id=eq.${organizationId}&order=created_at.desc`)]); const encrypted = conns[0]?.gmail; return { playbook: books[0]?.data, connections: conns[0] ? { gmail: encrypted ? decryptJson<Connections["gmail"]>(encrypted) : null, hubspotToken: conns[0].hubspot_token ?? "" } : undefined, leads: (leads ?? []).map(toLead), jobs: (jobs ?? []).map(toJob) }; }
 
-export function supabaseAdmin() {
-  return { rest };
-}
-
-type LeadRow = {
-  id: string; created_at: string; source: Lead["source"]; name: string; email: string;
-  company: string; title: string; message: string; status: Lead["status"];
-  research: Lead["research"]; draft: Lead["draft"]; events: Lead["events"];
-  thread: Lead["thread"]; intent: Lead["intent"]; slots: Lead["slots"];
-  tokens: number; cost_usd: number; gmail_id: string | null; hubspot_contact_id: string | null;
-};
-
-type JobRow = { id: string; type: Job["type"]; lead_id: string; status: Job["status"]; detail: string; created_at: string; finished_at?: string | null };
-
-function toLead(row: LeadRow): Lead {
-  return {
-    id: row.id, createdAt: row.created_at, source: row.source, name: row.name, email: row.email,
-    company: row.company ?? "", title: row.title ?? "", message: row.message ?? "", status: row.status,
-    research: row.research, draft: row.draft, events: row.events ?? [], thread: row.thread ?? [],
-    intent: row.intent ?? null, slots: row.slots ?? [], tokens: Number(row.tokens ?? 0),
-    costUsd: Number(row.cost_usd ?? 0), gmailId: row.gmail_id ?? undefined, hubspotContactId: row.hubspot_contact_id ?? undefined,
-  };
-}
-
-function fromLead(lead: Lead, organizationId: string): LeadRow & { organization_id: string } {
-  return {
-    id: lead.id, organization_id: organizationId, created_at: lead.createdAt, source: lead.source,
-    name: lead.name, email: lead.email, company: lead.company, title: lead.title, message: lead.message,
-    status: lead.status, research: lead.research, draft: lead.draft, events: lead.events ?? [],
-    thread: lead.thread ?? [], intent: lead.intent, slots: lead.slots ?? [], tokens: lead.tokens ?? 0,
-    cost_usd: lead.costUsd ?? 0, gmail_id: lead.gmailId ?? null, hubspot_contact_id: lead.hubspotContactId ?? null,
-  };
-}
-
-function toJob(row: JobRow): Job {
-  return { id: row.id, type: row.type, leadId: row.lead_id, status: row.status, detail: row.detail, createdAt: row.created_at, finishedAt: row.finished_at ?? undefined };
-}
-
-function fromJob(job: Job, organizationId: string) {
-  return { id: job.id, organization_id: organizationId, type: job.type, lead_id: job.leadId, status: job.status, detail: job.detail, created_at: job.createdAt, finished_at: job.finishedAt ?? null };
-}
-
-export async function readRemote(): Promise<Partial<Store>> {
-  const { organizationId } = await getAuthContext();
-  const [books, conns, leads, jobs] = await Promise.all([
-    rest<{ organization_id: string; data: Playbook }[]>(`org_playbooks?organization_id=eq.${organizationId}`),
-    rest<{ organization_id: string; gmail: unknown; hubspot_token: string }[]>(`org_connections?organization_id=eq.${organizationId}`),
-    rest<LeadRow[]>(`leads?organization_id=eq.${organizationId}&order=created_at.desc`),
-    rest<JobRow[]>(`jobs?organization_id=eq.${organizationId}&order=created_at.desc`),
-  ]);
-  const encrypted = conns[0]?.gmail;
-  return {
-    playbook: books[0]?.data,
-    connections: conns[0] ? { gmail: encrypted ? decryptJson<Connections["gmail"]>(encrypted) : null, hubspotToken: conns[0].hubspot_token ?? "" } : undefined,
-    leads: (leads ?? []).map(toLead),
-    jobs: (jobs ?? []).map(toJob),
-  };
-}
-
-export async function writeRemote(store: Store) {
-  const { organizationId } = await getAuthContext();
-  await rest(`org_playbooks?organization_id=eq.${organizationId}`, {
-    method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({ organization_id: organizationId, data: store.playbook, updated_at: new Date().toISOString() }),
-  });
-  await rest(`org_connections?organization_id=eq.${organizationId}`, {
-    method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({ organization_id: organizationId, gmail: store.connections.gmail ? encryptJson(store.connections.gmail) : null, hubspot_token: store.connections.hubspotToken, updated_at: new Date().toISOString() }),
-  });
-  if (store.leads.length) {
-    await rest("leads", { method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(store.leads.map((lead) => fromLead(lead, organizationId))) });
-  }
-  if (store.jobs.length) {
-    await rest("jobs", { method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(store.jobs.map((job) => fromJob(job, organizationId))) });
-  }
-}
-
+export async function writeRemote(store: Store) { const { organizationId } = await getAuthContext(); await rest(`org_playbooks?organization_id=eq.${organizationId}`, { method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ organization_id: organizationId, data: store.playbook, updated_at: new Date().toISOString() }) }); await rest(`org_connections?organization_id=eq.${organizationId}`, { method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ organization_id: organizationId, gmail: store.connections.gmail ? encryptJson(store.connections.gmail) : null, hubspot_token: store.connections.hubspotToken, updated_at: new Date().toISOString() }) }); if (store.leads.length) await rest("leads", { method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(store.leads.map((lead) => fromLead(lead, organizationId))) }); if (store.jobs.length) await rest("jobs", { method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(store.jobs.map((job) => fromJob(job, organizationId))) }); }
 export { rest };
