@@ -1,23 +1,5 @@
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-export function requireWebhookSecret(req: Request) {
-  const expected = process.env.WEBHOOK_SECRET;
-  if (!expected) throw new Error("WEBHOOK_SECRET is not configured");
-  const actual = req.headers.get("x-greenlit-secret");
-  if (!actual || actual !== expected) throw new Response("Unauthorized", { status: 401 });
-}
-
-export function leadInput(body: unknown) {
-  if (!body || typeof body !== "object") throw new Error("Invalid JSON body");
-  const input = body as Record<string, unknown>;
-  const email = String(input.email ?? "").trim().toLowerCase();
-  if (!EMAIL.test(email) || email.length > 320) throw new Error("Valid email required");
-  const text = (value: unknown, max: number) => String(value ?? "").trim().slice(0, max);
-  return {
-    name: text(input.name ?? email.split("@")[0], 200),
-    email,
-    company: text(input.company, 200),
-    title: text(input.title, 200),
-    message: text(input.message ?? input.note, 10000),
-  };
-}
+const EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export function requireWebhookSecret(req:Request){const expected=process.env.WEBHOOK_SECRET;if(!expected)throw new Response("Webhook secret is not configured",{status:503});const actual=req.headers.get("x-greenlit-secret");if(!actual||actual!==expected)throw new Response("Unauthorized",{status:401});}
+export function leadInput(body:unknown){if(!body||typeof body!=="object")throw new Error("Invalid JSON body");const input=body as Record<string,unknown>;const email=String(input.email??"").trim().toLowerCase();if(!EMAIL.test(email)||email.length>320)throw new Error("Valid email required");const text=(v:unknown,max:number)=>String(v??"").trim().slice(0,max);return{name:text(input.name??email.split("@")[0],200),email,company:text(input.company,200),title:text(input.title,200),message:text(input.message??input.note,10000)};}
+export function validatedResearch(input:unknown,fallback:{score:number;reasons:string[];companyGuess:string;likelyNeed:string;disqualified:boolean}){const value=input&&typeof input==="object"?input as Record<string,unknown>:{};const reasons=Array.isArray(value.reasons)?value.reasons.filter((x):x is string=>typeof x==="string").slice(0,10):fallback.reasons;const score=Number(value.score);return{companyGuess:typeof value.companyGuess==="string"?value.companyGuess.slice(0,300):fallback.companyGuess,likelyNeed:typeof value.likelyNeed==="string"?value.likelyNeed.slice(0,1000):fallback.likelyNeed,score:Number.isFinite(score)?Math.max(0,Math.min(100,score)):fallback.score,reasons:reasons.length?reasons:fallback.reasons,disqualified:typeof value.disqualified==="boolean"?value.disqualified:fallback.disqualified};}
+export function validatedDraft(input:unknown,fallback:{subject:string;body:string;reason:string}){const value=input&&typeof input==="object"?input as Record<string,unknown>:{};return{subject:typeof value.subject==="string"?value.subject.trim().slice(0,500):fallback.subject,body:typeof value.body==="string"?value.body.trim().slice(0,20000):fallback.body,reason:typeof value.reason==="string"?value.reason.slice(0,1000):fallback.reason};}
